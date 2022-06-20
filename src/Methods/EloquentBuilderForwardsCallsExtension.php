@@ -14,6 +14,7 @@ use PHPStan\Reflection\MethodReflection;
 use PHPStan\Reflection\MethodsClassReflectionExtension;
 use PHPStan\Reflection\MissingMethodFromReflectionException;
 use PHPStan\Reflection\ParametersAcceptorSelector;
+use PHPStan\Reflection\Php\PhpMethodReflection;
 use PHPStan\Reflection\ReflectionProvider;
 use PHPStan\ShouldNotHappenException;
 use PHPStan\Type\Generic\GenericObjectType;
@@ -106,34 +107,34 @@ final class EloquentBuilderForwardsCallsExtension implements MethodsClassReflect
         $ref = $this->builderHelper->searchOnEloquentBuilder($classReflection, $methodName, $modelReflection);
 
         if ($ref === null) {
-            // Special case for `SoftDeletes` trait
-            if (
-                in_array($methodName, ['withTrashed', 'onlyTrashed', 'withoutTrashed', 'restore'], true) &&
-                in_array(SoftDeletes::class, array_keys($modelReflection->getTraits(true)))
-            ) {
-                $ref = $this->reflectionProvider->getClass(SoftDeletes::class)->getMethod($methodName, new OutOfClassScope());
+            $traits = $modelReflection->getTraits(true);
+            foreach ($traits as $trait) {
+                if ($trait->hasMethod($methodName)) {
+                    $ref = $trait->getMethod($methodName, new OutOfClassScope());
 
-                if ($methodName === 'restore') {
+                    if($ref instanceof PhpMethodReflection){
+                        return new EloquentBuilderMethodReflection(
+                            $methodName,
+                            $classReflection,
+                            $ref,
+                            ParametersAcceptorSelector::selectSingle($ref->getVariants())->getParameters(),
+                            ParametersAcceptorSelector::selectSingle($ref->getVariants())->getReturnType(),
+                            ParametersAcceptorSelector::selectSingle($ref->getVariants())->isVariadic()
+                        );
+                    }
+
                     return new EloquentBuilderMethodReflection(
                         $methodName,
                         $classReflection,
                         $ref,
                         ParametersAcceptorSelector::selectSingle($ref->getVariants())->getParameters(),
-                        new IntegerType(),
+                        new GenericObjectType($classReflection->getName(), [$modelType]),
                         ParametersAcceptorSelector::selectSingle($ref->getVariants())->isVariadic()
                     );
+
                 }
 
-                return new EloquentBuilderMethodReflection(
-                    $methodName,
-                    $classReflection,
-                    $ref,
-                    ParametersAcceptorSelector::selectSingle($ref->getVariants())->getParameters(),
-                    new GenericObjectType($classReflection->getName(), [$modelType]),
-                    ParametersAcceptorSelector::selectSingle($ref->getVariants())->isVariadic()
-                );
             }
-
             return null;
         }
 
