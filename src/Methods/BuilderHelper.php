@@ -186,7 +186,30 @@ class BuilderHelper
             return $queryBuilderReflection->getNativeMethod($methodName);
         }
 
-        return $this->dynamicWhere($methodName, new GenericObjectType($eloquentBuilder->getName(), [new ObjectType($model->getName())]));
+        $ref = $this->dynamicWhere($methodName, new GenericObjectType($eloquentBuilder->getName(), [new ObjectType($model->getName())]));
+        if (($ref === null) && array_key_exists($methodName, $model->getMethodTags())) {
+            $methodTag = $model->getMethodTags()[$methodName];
+
+            $parameters = [];
+            foreach ($methodTag->getParameters() as $parameterName => $parameterTag) {
+                $parameters[] = new AnnotationScopeMethodParameterReflection($parameterName, $parameterTag->getType(), $parameterTag->passedByReference(), $parameterTag->isOptional(), $parameterTag->isVariadic(), $parameterTag->getDefaultValue());
+            }
+
+            // We shift the parameters,
+            // because first parameter is the Builder
+            array_shift($parameters);
+
+            return new EloquentBuilderMethodReflection(
+                $methodName,
+                $model,
+                new AnnotationScopeMethodReflection($methodName, $model, $methodTag->getReturnType(), $parameters, $methodTag->isStatic(), false),
+                $parameters,
+                $methodTag->getReturnType()
+            );
+        }
+
+        return $ref;
+
     }
 
     /**

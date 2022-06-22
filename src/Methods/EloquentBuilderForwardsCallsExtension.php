@@ -7,6 +7,8 @@ namespace NunoMaduro\Larastan\Methods;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use NunoMaduro\Larastan\Reflection\AnnotationScopeMethodParameterReflection;
+use NunoMaduro\Larastan\Reflection\AnnotationScopeMethodReflection;
 use NunoMaduro\Larastan\Reflection\EloquentBuilderMethodReflection;
 use PHPStan\Analyser\OutOfClassScope;
 use PHPStan\Reflection\ClassReflection;
